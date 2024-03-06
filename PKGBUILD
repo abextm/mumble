@@ -12,7 +12,7 @@ pkgrel=6
 pkgdesc="An Open Source, low-latency, high quality voice chat software"
 arch=(x86_64)
 url="https://www.mumble.info/"
-license=(BSD)
+license=(BSD-3-Clause)
 # shared depends
 depends=(
   gcc-libs
