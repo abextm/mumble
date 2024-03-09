@@ -8,7 +8,7 @@
 pkgbase=mumble
 pkgname=(mumble mumble-server)
 pkgver=1.5.613
-pkgrel=1
+pkgrel=2
 pkgdesc="An Open Source, low-latency, high quality voice chat software"
 arch=(x86_64)
 url="https://www.mumble.info/"
@@ -106,6 +106,7 @@ build() {
     -D bundled-json=OFF
     -D bundled-rnnoise=OFF
     -D bundled-speex=OFF
+    -D rnnoise=ON
   )
   local cmake_options_server=(
     -D MUMBLE_INSTALL_ABS_SYSCONFDIR=/etc/mumble-server
