@@ -62,16 +62,13 @@ checkdepends=(
 )
 source=(
   https://github.com/mumble-voip/mumble/releases/download/v$pkgver/$pkgbase-$pkgver.tar.gz{,.sig}
-  mumble-server.tmpfiles
   $pkgbase-1.5.517-config_defaults.patch
 )
 sha512sums=('1dba58e6f39dbef88c6e0d1501530bee62af5bd6c798dcfdbe6c9d94c1ec22ab91d157ba3ccb96d810daf31907ac2bbec876be20b8c9613664488e6bb03a5b5b'
             'SKIP'
-            '350575aaf26ac8b7dc567018defd59913da957983986017e82a92e53f2a6d21473d9c2566177abd7611d95858a723bcf7f8dad49e8ca18d18b9fa4e75fb15ca6'
             'c12f6269c5745532031f09fba5b9e3118e6beaf387ae0aaba6ff8380a1452b47f9f0d1cae04472a5763b3da695e03467de152a98bf03c01ae59bd6d553ec7100')
 b2sums=('3eeb3e51f691f2179848341ba9e7d31a31cd1a66bd9c1edabeec90c99885a9630c74374d8c357d5fbfb9ee205d63aceeabcafd718350cc34c57c4fe1e7a5bf94'
         'SKIP'
-        '476353608e794c431d9c79a54e11ad0442e3c96607b6492d3b2f5b589b96b120611e2e3dc1bb4f8e17c0911c238a9ca7b409277353fa08b9f690217f80d7dc4e'
         'c607246691e9701f54b8d133db7d424a46ab94781178d172ae8a35df8ca505da59734ddae00789b93af316de3344d7e177a1a988e1438121e1e921ff59724f24')
 # See https://github.com/mumble-voip/mumble-gpg-signatures
 validpgpkeys=(
