@@ -81,6 +81,8 @@ validpgpkeys=(
 prepare() {
   # add default configuration options
   patch -Np1 -d $pkgbase-$pkgver -i ../$pkgbase-1.5.517-config_defaults.patch
+  # Ensure the _mumble-server user is fully locked.
+  printf 'u! _mumble-server - "Mumble server user" - -\n' > $pkgbase-$pkgver/auxiliary_files/config_files/mumble-server.sysusers
   # ensure the default server directory is created
   printf "d /var/lib/mumble-server 0750 _mumble-server _mumble-server -\n" >> $pkgbase-$pkgver/auxiliary_files/config_files/mumble-server.tmpfiles.in
 }
