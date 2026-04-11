@@ -1,5 +1,5 @@
 [mumble]
-source = "git"
-git = "https://github.com/mumble-voip/mumble"
-ignored = "v1.6.870"
+source = "github"
+github = "mumble-voip/mumble"
+use_latest_release = true
 prefix = "v"
