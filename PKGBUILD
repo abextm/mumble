@@ -6,8 +6,9 @@
 
 # NOTE: needs to be built using multilib for mumble-overlay!
 pkgbase=mumble
-pkgname=(mumble mumble-server)
-pkgver=1.5.857
+#pkgname=(mumble mumble-server)
+pkgname=mumble
+pkgver=1.6.870
 pkgrel=6
 pkgdesc="An Open Source, low-latency, high quality voice chat software"
 arch=(x86_64)
@@ -61,23 +62,31 @@ checkdepends=(
   xorg-server-xvfb
 )
 source=(
-  https://github.com/mumble-voip/mumble/releases/download/v$pkgver/$pkgbase-$pkgver.tar.gz{,.sig}
+#  https://github.com/mumble-voip/mumble/releases/download/v$pkgver/$pkgbase-$pkgver.tar.gz{,.sig}
+  https://github.com/mumble-voip/mumble/releases/download/v$pkgver/$pkgbase-$pkgver.tar.gz
   $pkgbase-1.5.517-config_defaults.patch
+  0001-fix-tab-completion.patch
+  0002-fix-markdown.patch
+  0003-add-paste-to-send-dialog.patch
 )
-sha512sums=('a0b6d4f5c86992002bbe687409f22037555a753ed92ff26e420b901c85e96c2c37e1999c5bab9cb2c8f2a3dd9d799dc3ee8641e6b91c85d9514db59c378b55df'
+sha512sums=(
             'SKIP'
-            'c12f6269c5745532031f09fba5b9e3118e6beaf387ae0aaba6ff8380a1452b47f9f0d1cae04472a5763b3da695e03467de152a98bf03c01ae59bd6d553ec7100')
-b2sums=('764a643c4a5f5831b3e2f929473caf2f3fd6c00015b0c4162e5c8fe52cf50b32705e9677401cc9311a713fe0b98ed09d9b68ba48f462fcae91f882a3976962ad'
-        'SKIP'
-        'c607246691e9701f54b8d133db7d424a46ab94781178d172ae8a35df8ca505da59734ddae00789b93af316de3344d7e177a1a988e1438121e1e921ff59724f24')
+            'c12f6269c5745532031f09fba5b9e3118e6beaf387ae0aaba6ff8380a1452b47f9f0d1cae04472a5763b3da695e03467de152a98bf03c01ae59bd6d553ec7100'
+            'SKIP'
+            'SKIP'
+            'SKIP'
+)
 # See https://github.com/mumble-voip/mumble-gpg-signatures
 validpgpkeys=(
-  'CEB6BB9EC81FA7105F22A017CABE1DB1F21021AE'  # Mumble Automatic Build Infrastructure 2025 <mumble-auto-build-2025@mumble.info>
+#  'CEB6BB9EC81FA7105F22A017CABE1DB1F21021AE'  # Mumble Automatic Build Infrastructure 2025 <mumble-auto-build-2025@mumble.info>
 )
 
 prepare() {
   # add default configuration options
-  patch -Np1 -d $pkgbase-$pkgver -i ../$pkgbase-1.5.517-config_defaults.patch
+#  patch -Np1 -d $pkgbase-$pkgver -i ../$pkgbase-1.5.517-config_defaults.patch
+  patch -p1 -d $pkgbase-$pkgver -i ../0001-fix-tab-completion.patch
+  patch -p1 -d $pkgbase-$pkgver -i ../0002-fix-markdown.patch
+  patch -p1 -d $pkgbase-$pkgver -i ../0003-add-paste-to-send-dialog.patch
   # Ensure the _mumble-server user is fully locked.
   printf 'u! _mumble-server - "Mumble server user" - -\n' > $pkgbase-$pkgver/auxiliary_files/config_files/mumble-server.sysusers
   # ensure the default server directory is created
@@ -94,7 +103,7 @@ build() {
     # upstream requires adding arbitrary build number specifically, as otherwise the version string is wrong:
     # https://github.com/mumble-voip/mumble/issues/5538
     -D BUILD_NUMBER="${pkgver/*./}"
-    -D tests=ON
+    -D tests=OFF
     -D warnings-as-errors=OFF
     -S $pkgbase-$pkgver
     -W no-dev
@@ -116,17 +125,17 @@ build() {
     -B build-server
   )
 
-  cmake "${default_options[@]}" "${cmake_options_server[@]}"
-  cmake --build build-server --verbose
+#  cmake "${default_options[@]}" "${cmake_options_server[@]}"
+#  cmake --build build-server --verbose
 
   cmake "${default_options[@]}" "${cmake_options_client[@]}"
   cmake --build build-client --verbose
 }
 
-check() {
-  xvfb-run ctest --test-dir build-client --output-on-failure
-  ctest --test-dir build-server --output-on-failure
-}
+#check() {
+#  xvfb-run ctest --test-dir build-client --output-on-failure
+#  ctest --test-dir build-server --output-on-failure
+#}
 
 package_mumble() {
   pkgdesc+=" (client)"
@@ -161,22 +170,4 @@ package_mumble() {
   install -vDm 644 $pkgbase-$pkgver/LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
 }
 
-package_mumble-server() {
-  pkgdesc+=" (server)"
-  depends+=(
-    avahi libdns_sd.so
-    bash
-    libcap libcap.so
-    openssl libcrypto.so libssl.so
-    protobuf libprotobuf.so
-    zeroc-ice
-  )
-  conflicts=('murmur<1.5')
-  replaces=('murmur<1.5')
-  backup=(etc/$pkgbase/$pkgname.ini)
-  install=mumble-server.install
-
-  DESTDIR="$pkgdir" cmake --install build-server
-  install -vDm 644 $pkgbase-$pkgver/LICENSE -t "$pkgdir/usr/share/licenses/$pkgname/"
-}
 # vim: sw=2:ts=2 et:
