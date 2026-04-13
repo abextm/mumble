@@ -319,8 +319,19 @@ unsigned int ChatbarTextEdit::completeAtCursor() {
 	} else {
 		bool bBaseIsName   = false;
 		const int iend     = tc.position();
-		const auto istart  = toPlainText().lastIndexOf(QLatin1Char(' '), iend - 1) + 1;
-		const QString base = toPlainText().mid(istart, iend - istart);
+		// Treat both spaces and '@' as word delimiters so that Discord-style
+		// "@name" typing works: the '@' is left in place and only the name part
+		// after it is selected and replaced by the completion.
+		// However, only count '@' as a delimiter when it appears at the very
+		// start of the text or directly after a space — not when it sits
+		// mid-word (e.g. in a username like "mike@mike"), otherwise repeated
+		// Tab presses would keep appending "@mike" to the already-completed name.
+		const auto spacePos       = toPlainText().lastIndexOf(QLatin1Char(' '), iend - 1);
+		const auto atPos          = toPlainText().lastIndexOf(QLatin1Char('@'), iend - 1);
+		const bool atIsDelimiter  = (atPos >= 0)
+		                            && (atPos == 0 || toPlainText()[atPos - 1] == QLatin1Char(' '));
+		const auto istart         = (atIsDelimiter && atPos > spacePos ? atPos : spacePos) + 1;
+		const QString base  = toPlainText().mid(istart, iend - istart);
 		tc.setPosition(static_cast< int >(istart));
 		tc.setPosition(iend, QTextCursor::KeepAnchor);
 

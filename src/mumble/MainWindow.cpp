@@ -2247,22 +2247,23 @@ void MainWindow::on_qteChat_ctrlSpacePressed() {
 }
 
 void MainWindow::on_qteChat_tabPressed() {
-	// Only autocomplete the username, if the user entered text starts with a "@".
-	// Otherwise TAB should be reserved for accessible keyboard navigation.
-	QString currentText = qteChat->toPlainText();
-	if (currentText.startsWith("@")) {
-		currentText.remove(0, 1);
-
-		qteChat->clear();
-		QTextCursor tc = qteChat->textCursor();
-		tc.insertText(currentText);
-		qteChat->setTextCursor(tc);
-
-		autocompleteUsername();
+	// If the chatbar is empty there is nothing to complete; let Tab move focus
+	// to the next widget for accessibility.
+	if (qteChat->toPlainText().isEmpty()) {
+		focusNextMainWidget();
 		return;
 	}
 
-	focusNextMainWidget();
+	// Try to complete the word at the cursor as a username.  completeAtCursor()
+	// returns the session-id of the matched user, or 0 if nothing matched.
+	// Fall back to focus navigation when no match is found so that Tab still
+	// works as expected when the cursor is not on a name prefix.
+	unsigned int res = qteChat->completeAtCursor();
+	if (res != 0) {
+		qtvUsers->setCurrentIndex(pmModel->index(ClientUser::get(res)));
+	} else {
+		focusNextMainWidget();
+	}
 }
 
 void MainWindow::autocompleteUsername() {
