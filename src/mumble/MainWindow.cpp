@@ -2205,6 +2205,19 @@ void MainWindow::sendChatbarText(QString qsText, bool plainText) {
 		// function, this job has to be done explicitly as otherwise line breaks won't be shown on
 		// the receiving end of this text message.
 		qsText = Markdown::markdownToHTML(qsText);
+
+		// Only wrap in white-space: pre-wrap when the message actually contains
+		// HTML formatting (bold, links, code blocks, …) or spans multiple lines.
+		// Plain single-line messages are sent as raw text so that server-side
+		// features such as emote parsing and slash commands work without the
+		// server having to strip HTML.
+		static const QRegularExpression s_formattingTagRegex(QLatin1String("<(?!br/>)[^>]+>"));
+		if (s_formattingTagRegex.match(qsText).hasMatch()
+		    || qsText.contains(QLatin1String("<br/>"))) {
+			qsText = QLatin1String("<span style=\"white-space: pre-wrap\">")
+			         + qsText
+			         + QLatin1String("</span>");
+		}
 	}
 
 	sendChatbarMessage(qsText);

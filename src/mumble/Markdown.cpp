@@ -376,16 +376,13 @@ QString markdownToHTML(const QString &markdownInput) {
 		}
 	}
 
-	// Replace linebreaks afterwards in order to not mess up the RegEx used by the
-	// different functions.
-	static const QRegularExpression s_doubleLineBreakRegEx(QLatin1String("(\r\n|\n|\r)(\r\n|\n|\r)"));
-	htmlString.replace(s_doubleLineBreakRegEx, QLatin1String("<br/>"));
+	// Replace linebreaks with <br/> after all markdown patterns have been processed,
+	// so that every newline the user typed produces a visible line break.
+	static const QRegularExpression s_lineBreakRegEx(QLatin1String("\r\n|\n|\r"));
+	htmlString.replace(s_lineBreakRegEx, QLatin1String("<br/>"));
 
-	// Remove single newlines
-	static const QRegularExpression s_singleLineBreak("\r\n|\n|\r");
-	htmlString.replace(s_singleLineBreak, "");
-
-	// Restore linebreaks in <pre> blocks
+	// Restore literal newlines inside <pre> blocks — those were stashed as placeholders
+	// so the regex passes above wouldn't touch them.
 	htmlString.replace(regularLineBreakPlaceholder, QLatin1String("\n"));
 
 	return htmlString;
