@@ -1,0 +1,80 @@
+From 13dd61e53a13b9ad1b79a2ed5cba4175567dd6ea Mon Sep 17 00:00:00 2001
+From: Max Weber <abex@abex.sh>
+Date: Sun, 12 Apr 2026 23:48:19 -0600
+Subject: [PATCH 1/3] fix tab completion
+
+---
+ src/mumble/CustomElements.cpp | 15 +++++++++++++--
+ src/mumble/MainWindow.cpp     | 27 ++++++++++++++-------------
+ 2 files changed, 27 insertions(+), 15 deletions(-)
+
+diff --git a/src/mumble/CustomElements.cpp b/src/mumble/CustomElements.cpp
+index 10a6c9cba..cd1af2958 100644
+--- a/src/mumble/CustomElements.cpp
++++ b/src/mumble/CustomElements.cpp
+@@ -319,8 +319,19 @@ unsigned int ChatbarTextEdit::completeAtCursor() {
+ 	} else {
+ 		bool bBaseIsName   = false;
+ 		const int iend     = tc.position();
+-		const auto istart  = toPlainText().lastIndexOf(QLatin1Char(' '), iend - 1) + 1;
+-		const QString base = toPlainText().mid(istart, iend - istart);
++		// Treat both spaces and '@' as word delimiters so that Discord-style
++		// "@name" typing works: the '@' is left in place and only the name part
++		// after it is selected and replaced by the completion.
++		// However, only count '@' as a delimiter when it appears at the very
++		// start of the text or directly after a space — not when it sits
++		// mid-word (e.g. in a username like "mike@mike"), otherwise repeated
++		// Tab presses would keep appending "@mike" to the already-completed name.
++		const auto spacePos       = toPlainText().lastIndexOf(QLatin1Char(' '), iend - 1);
++		const auto atPos          = toPlainText().lastIndexOf(QLatin1Char('@'), iend - 1);
++		const bool atIsDelimiter  = (atPos >= 0)
++		                            && (atPos == 0 || toPlainText()[atPos - 1] == QLatin1Char(' '));
++		const auto istart         = (atIsDelimiter && atPos > spacePos ? atPos : spacePos) + 1;
++		const QString base  = toPlainText().mid(istart, iend - istart);
+ 		tc.setPosition(static_cast< int >(istart));
+ 		tc.setPosition(iend, QTextCursor::KeepAnchor);
+ 
+diff --git a/src/mumble/MainWindow.cpp b/src/mumble/MainWindow.cpp
+index f4cd9d653..a6356c520 100644
+--- a/src/mumble/MainWindow.cpp
++++ b/src/mumble/MainWindow.cpp
+@@ -2247,22 +2247,23 @@ void MainWindow::on_qteChat_ctrlSpacePressed() {
+ }
+ 
+ void MainWindow::on_qteChat_tabPressed() {
+-	// Only autocomplete the username, if the user entered text starts with a "@".
+-	// Otherwise TAB should be reserved for accessible keyboard navigation.
+-	QString currentText = qteChat->toPlainText();
+-	if (currentText.startsWith("@")) {
+-		currentText.remove(0, 1);
+-
+-		qteChat->clear();
+-		QTextCursor tc = qteChat->textCursor();
+-		tc.insertText(currentText);
+-		qteChat->setTextCursor(tc);
+-
+-		autocompleteUsername();
++	// If the chatbar is empty there is nothing to complete; let Tab move focus
++	// to the next widget for accessibility.
++	if (qteChat->toPlainText().isEmpty()) {
++		focusNextMainWidget();
+ 		return;
+ 	}
+ 
+-	focusNextMainWidget();
++	// Try to complete the word at the cursor as a username.  completeAtCursor()
++	// returns the session-id of the matched user, or 0 if nothing matched.
++	// Fall back to focus navigation when no match is found so that Tab still
++	// works as expected when the cursor is not on a name prefix.
++	unsigned int res = qteChat->completeAtCursor();
++	if (res != 0) {
++		qtvUsers->setCurrentIndex(pmModel->index(ClientUser::get(res)));
++	} else {
++		focusNextMainWidget();
++	}
+ }
+ 
+ void MainWindow::autocompleteUsername() {
+-- 
+2.53.0
+
