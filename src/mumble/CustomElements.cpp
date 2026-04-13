@@ -18,7 +18,13 @@
 #include <QtGui/QClipboard>
 #include <QtGui/QContextMenuEvent>
 #include <QtGui/QKeyEvent>
+#include <QtGui/QPixmap>
+#include <QtWidgets/QDialog>
+#include <QtWidgets/QDialogButtonBox>
+#include <QtWidgets/QLabel>
+#include <QtWidgets/QPushButton>
 #include <QtWidgets/QScrollBar>
+#include <QtWidgets/QVBoxLayout>
 
 LogTextBrowser::LogTextBrowser(QWidget *p) : QTextBrowser(p) {
 }
@@ -225,6 +231,44 @@ bool ChatbarTextEdit::sendImagesFromMimeData(const QMimeData *source) {
 bool ChatbarTextEdit::emitPastedImage(QImage image) {
 	QString processedImage = Log::imageToImg(image, static_cast< int >(Global::get().uiImageLength));
 	if (processedImage.length() > 0) {
+		// Show a confirmation dialog with a preview before sending the image.
+		QDialog confirmDialog(this);
+		confirmDialog.setWindowTitle(tr("Send Image?"));
+		confirmDialog.setWindowModality(Qt::WindowModal);
+
+		QVBoxLayout *layout = new QVBoxLayout(&confirmDialog);
+
+		QLabel *promptLabel = new QLabel(tr("Do you want to send this image to the channel?"), &confirmDialog);
+		promptLabel->setWordWrap(true);
+		layout->addWidget(promptLabel);
+
+		QLabel *previewLabel = new QLabel(&confirmDialog);
+		QPixmap pixmap        = QPixmap::fromImage(image);
+		const int maxPreview  = 300;
+		if (pixmap.width() > maxPreview || pixmap.height() > maxPreview) {
+			pixmap = pixmap.scaled(maxPreview, maxPreview, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+		}
+		previewLabel->setPixmap(pixmap);
+		previewLabel->setAlignment(Qt::AlignCenter);
+		layout->addWidget(previewLabel);
+
+		QLabel *sizeLabel = new QLabel(tr("%1 \xc3\x97 %2 pixels").arg(image.width()).arg(image.height()),
+		                               &confirmDialog);
+		sizeLabel->setAlignment(Qt::AlignCenter);
+		layout->addWidget(sizeLabel);
+
+		QDialogButtonBox *buttonBox =
+			new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &confirmDialog);
+		buttonBox->button(QDialogButtonBox::Ok)->setText(tr("Send"));
+		connect(buttonBox, &QDialogButtonBox::accepted, &confirmDialog, &QDialog::accept);
+		connect(buttonBox, &QDialogButtonBox::rejected, &confirmDialog, &QDialog::reject);
+		layout->addWidget(buttonBox);
+
+		if (confirmDialog.exec() != QDialog::Accepted) {
+			// User cancelled — consume the paste event without sending.
+			return true;
+		}
+
 		QString imgHtml = QLatin1String("<br />") + processedImage;
 		emit pastedImage(imgHtml);
 		return true;
@@ -319,8 +363,19 @@ unsigned int ChatbarTextEdit::completeAtCursor() {
 	} else {
 		bool bBaseIsName   = false;
 		const int iend     = tc.position();
-		const auto istart  = toPlainText().lastIndexOf(QLatin1Char(' '), iend - 1) + 1;
-		const QString base = toPlainText().mid(istart, iend - istart);
+		// Treat both spaces and '@' as word delimiters so that Discord-style
+		// "@name" typing works: the '@' is left in place and only the name part
+		// after it is selected and replaced by the completion.
+		// However, only count '@' as a delimiter when it appears at the very
+		// start of the text or directly after a space — not when it sits
+		// mid-word (e.g. in a username like "mike@mike"), otherwise repeated
+		// Tab presses would keep appending "@mike" to the already-completed name.
+		const auto spacePos       = toPlainText().lastIndexOf(QLatin1Char(' '), iend - 1);
+		const auto atPos          = toPlainText().lastIndexOf(QLatin1Char('@'), iend - 1);
+		const bool atIsDelimiter  = (atPos >= 0)
+		                            && (atPos == 0 || toPlainText()[atPos - 1] == QLatin1Char(' '));
+		const auto istart         = (atIsDelimiter && atPos > spacePos ? atPos : spacePos) + 1;
+		const QString base  = toPlainText().mid(istart, iend - istart);
 		tc.setPosition(static_cast< int >(istart));
 		tc.setPosition(iend, QTextCursor::KeepAnchor);
 

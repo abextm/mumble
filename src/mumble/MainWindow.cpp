@@ -2200,11 +2200,24 @@ void MainWindow::sendChatbarText(QString qsText, bool plainText) {
 					 .replace("\n", "<br>")
 					 .replace(" ", "&nbsp;");
 	} else {
+		// Messages beginning with '/' are server commands — check before processing
+		// so we can decide whether to add the whitespace-preservation wrapper.
+		const bool isCommand = qsText.startsWith(QLatin1Char('/'));
+
 		// Markdown::markdownToHTML also takes care of replacing line breaks (\n) with the respective
 		// HTML code <br/>. Therefore if Markdown support is ever going to be removed from this
 		// function, this job has to be done explicitly as otherwise line breaks won't be shown on
 		// the receiving end of this text message.
 		qsText = Markdown::markdownToHTML(qsText);
+
+		// Wrap in white-space: pre-wrap so spaces and indentation are preserved
+		// when rendered.  Skip the wrapper for server commands so the '/' prefix
+		// arrives at the server unobscured by any enclosing HTML tag.
+		if (!isCommand) {
+			qsText = QLatin1String("<span style=\"white-space: pre-wrap\">")
+			         + qsText
+			         + QLatin1String("</span>");
+		}
 	}
 
 	sendChatbarMessage(qsText);
@@ -2247,22 +2260,23 @@ void MainWindow::on_qteChat_ctrlSpacePressed() {
 }
 
 void MainWindow::on_qteChat_tabPressed() {
-	// Only autocomplete the username, if the user entered text starts with a "@".
-	// Otherwise TAB should be reserved for accessible keyboard navigation.
-	QString currentText = qteChat->toPlainText();
-	if (currentText.startsWith("@")) {
-		currentText.remove(0, 1);
-
-		qteChat->clear();
-		QTextCursor tc = qteChat->textCursor();
-		tc.insertText(currentText);
-		qteChat->setTextCursor(tc);
-
-		autocompleteUsername();
+	// If the chatbar is empty there is nothing to complete; let Tab move focus
+	// to the next widget for accessibility.
+	if (qteChat->toPlainText().isEmpty()) {
+		focusNextMainWidget();
 		return;
 	}
 
-	focusNextMainWidget();
+	// Try to complete the word at the cursor as a username.  completeAtCursor()
+	// returns the session-id of the matched user, or 0 if nothing matched.
+	// Fall back to focus navigation when no match is found so that Tab still
+	// works as expected when the cursor is not on a name prefix.
+	unsigned int res = qteChat->completeAtCursor();
+	if (res != 0) {
+		qtvUsers->setCurrentIndex(pmModel->index(ClientUser::get(res)));
+	} else {
+		focusNextMainWidget();
+	}
 }
 
 void MainWindow::autocompleteUsername() {
