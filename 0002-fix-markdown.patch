@@ -1,4 +1,4 @@
-From d6a215b490c0a51c010337688f815dcf7af426fb Mon Sep 17 00:00:00 2001
+From a058082444e383d8f212793fe0b1f4f7eefb5ae9 Mon Sep 17 00:00:00 2001
 From: Max Weber <abex@abex.sh>
 Date: Sun, 12 Apr 2026 23:49:57 -0600
 Subject: [PATCH 2/3] fix markdown
@@ -9,27 +9,22 @@ Subject: [PATCH 2/3] fix markdown
  2 files changed, 19 insertions(+), 9 deletions(-)
 
 diff --git a/src/mumble/MainWindow.cpp b/src/mumble/MainWindow.cpp
-index a6356c520..23d68d133 100644
+index a6356c520..68284c8c1 100644
 --- a/src/mumble/MainWindow.cpp
 +++ b/src/mumble/MainWindow.cpp
-@@ -2200,11 +2200,24 @@ void MainWindow::sendChatbarText(QString qsText, bool plainText) {
- 					 .replace("\n", "<br>")
- 					 .replace(" ", "&nbsp;");
- 	} else {
-+		// Messages beginning with '/' are server commands — check before processing
-+		// so we can decide whether to add the whitespace-preservation wrapper.
-+		const bool isCommand = qsText.startsWith(QLatin1Char('/'));
-+
- 		// Markdown::markdownToHTML also takes care of replacing line breaks (\n) with the respective
- 		// HTML code <br/>. Therefore if Markdown support is ever going to be removed from this
+@@ -2205,6 +2205,19 @@ void MainWindow::sendChatbarText(QString qsText, bool plainText) {
  		// function, this job has to be done explicitly as otherwise line breaks won't be shown on
  		// the receiving end of this text message.
  		qsText = Markdown::markdownToHTML(qsText);
 +
-+		// Wrap in white-space: pre-wrap so spaces and indentation are preserved
-+		// when rendered.  Skip the wrapper for server commands so the '/' prefix
-+		// arrives at the server unobscured by any enclosing HTML tag.
-+		if (!isCommand) {
++		// Only wrap in white-space: pre-wrap when the message actually contains
++		// HTML formatting (bold, links, code blocks, …) or spans multiple lines.
++		// Plain single-line messages are sent as raw text so that server-side
++		// features such as emote parsing and slash commands work without the
++		// server having to strip HTML.
++		static const QRegularExpression s_formattingTagRegex(QLatin1String("<(?!br/>)[^>]+>"));
++		if (s_formattingTagRegex.match(qsText).hasMatch()
++		    || qsText.contains(QLatin1String("<br/>"))) {
 +			qsText = QLatin1String("<span style=\"white-space: pre-wrap\">")
 +			         + qsText
 +			         + QLatin1String("</span>");

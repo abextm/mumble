@@ -1,4 +1,4 @@
-From 91639092c2c5c3fd23d4b669ae568c3b2137a373 Mon Sep 17 00:00:00 2001
+From 1285bd42fe69e3fda34ec2b97d1c7d693c27263e Mon Sep 17 00:00:00 2001
 From: Max Weber <abex@abex.sh>
 Date: Sun, 12 Apr 2026 23:50:17 -0600
 Subject: [PATCH 3/3] add paste to send dialog
