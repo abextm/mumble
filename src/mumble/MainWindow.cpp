@@ -2200,20 +2200,20 @@ void MainWindow::sendChatbarText(QString qsText, bool plainText) {
 					 .replace("\n", "<br>")
 					 .replace(" ", "&nbsp;");
 	} else {
-		// Messages beginning with '/' are server commands — check before processing
-		// so we can decide whether to add the whitespace-preservation wrapper.
-		const bool isCommand = qsText.startsWith(QLatin1Char('/'));
-
 		// Markdown::markdownToHTML also takes care of replacing line breaks (\n) with the respective
 		// HTML code <br/>. Therefore if Markdown support is ever going to be removed from this
 		// function, this job has to be done explicitly as otherwise line breaks won't be shown on
 		// the receiving end of this text message.
 		qsText = Markdown::markdownToHTML(qsText);
 
-		// Wrap in white-space: pre-wrap so spaces and indentation are preserved
-		// when rendered.  Skip the wrapper for server commands so the '/' prefix
-		// arrives at the server unobscured by any enclosing HTML tag.
-		if (!isCommand) {
+		// Only wrap in white-space: pre-wrap when the message actually contains
+		// HTML formatting (bold, links, code blocks, …) or spans multiple lines.
+		// Plain single-line messages are sent as raw text so that server-side
+		// features such as emote parsing and slash commands work without the
+		// server having to strip HTML.
+		static const QRegularExpression s_formattingTagRegex(QLatin1String("<(?!br/>)[^>]+>"));
+		if (s_formattingTagRegex.match(qsText).hasMatch()
+		    || qsText.contains(QLatin1String("<br/>"))) {
 			qsText = QLatin1String("<span style=\"white-space: pre-wrap\">")
 			         + qsText
 			         + QLatin1String("</span>");
